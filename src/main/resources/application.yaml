@@ -1,12 +1,14 @@
 server:
-  port: 9090
+  port: 8080
 spring:
   application:
     name: IA-RAG
+  resources:
+    static-locations: "classpath:/public/"
   jmx:
     enabled: true
   datasource:
-    url: jdbc:mariadb://localhost:3306/vector
+    url: jdbc:mariadb://localhost:3306/rag
     port: 3306
     username: root
     password: 49454945
@@ -15,14 +17,16 @@ spring:
       mariadb:
         initialize-schema: true
         distance-type: COSINE
-        dimensions: 1536
     ollama:
       init:
-        pull-model-strategy=always:
+        pull-model-strategy=always: true
       base-url: http://localhost:11434
+      embedding:
+        options:
+          model: deepseek-r1:7b
       chat:
         options:
-          model: mistral
+          model: deepseek-r1:7b
           temperature: 0.7
 
 management:

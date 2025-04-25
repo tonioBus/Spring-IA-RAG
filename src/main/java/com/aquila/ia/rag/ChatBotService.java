@@ -11,10 +11,12 @@ import java.util.List;
 
 // @Service
 public class ChatBotService {
+
     @Qualifier("openAiChatModel")
     @Autowired
     private ChatModel chatClient;
-    @Autowired
+
+    // @Autowired
     // private DataRetrievalService dataRetrievalService;
 
     private final String PROMPT_BLUEPRINT = """

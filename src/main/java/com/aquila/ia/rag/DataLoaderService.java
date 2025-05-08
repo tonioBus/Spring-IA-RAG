@@ -9,6 +9,7 @@ import org.springframework.ai.reader.pdf.config.PdfDocumentReaderConfig;
 import org.springframework.ai.transformer.splitter.TokenTextSplitter;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
 
@@ -36,5 +37,10 @@ public class DataLoaderService {
 
         TokenTextSplitter tokenTextSplitter = new TokenTextSplitter();
         this.vectorStore.accept(tokenTextSplitter.apply(pdfReader.get()));
+    }
+
+    @Bean
+    public VectorStore getVector() {
+        return vectorStore;
     }
 }

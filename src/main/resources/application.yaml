@@ -36,3 +36,7 @@ management:
         include: 'health,info,hawtio, jolokia'
 hawtio:
   authenticationEnabled: false
+
+aquila:
+  rag:
+    location: /RAG/

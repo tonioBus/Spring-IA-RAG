@@ -15,6 +15,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.stereotype.Service;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
@@ -24,7 +25,7 @@ import java.util.Objects;
 @Service
 public class DataLoaderService {
 
-    @Value("/RAG/")
+    @Value("${aquila.rag.location}")
     private String rootPath;
 
     private final VectorStore vectorStore;
@@ -33,6 +34,7 @@ public class DataLoaderService {
 
     public void load() {
         load(new File(rootPath));
+        log.info("load of document done in {}. You can start to send request ...", rootPath);
     }
 
     private void load(File file) {

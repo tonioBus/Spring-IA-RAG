@@ -16,10 +16,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.stereotype.Service;
 
 import java.io.*;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Objects;
-import java.util.Properties;
+import java.util.*;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -31,6 +28,8 @@ public class DataLoaderService {
     @Value("${aquila.rag.location}")
     private String rootPath;
 
+    private final String importedFilename = rootPath + "/" + DONE_IMPORT;
+
     private final VectorStore vectorStore;
 
     private final TokenTextSplitter tokenTextSplitter = new TokenTextSplitter();
@@ -38,7 +37,6 @@ public class DataLoaderService {
     private final Properties imported = new Properties();
 
     public void load() {
-        final String importedFilename = rootPath + "/" + DONE_IMPORT;
         try (InputStream in = new FileInputStream(importedFilename)) {
             imported.load(in);
         } catch (IOException e) {
@@ -54,11 +52,12 @@ public class DataLoaderService {
     }
 
     private void load(File file) {
-        log.info("load({})", file);
+        log.info("load dir({})", file);
         Arrays.stream(Objects.requireNonNull(file.listFiles())).forEach(
                 subFile -> {
                     final String filename = subFile.toString();
-                    if (!imported.contains(filename) && subFile.canRead()) {
+                    final String key = filename.replace('\\', '.');
+                    if (!imported.containsKey(key) && subFile.canRead() && !filename.equals(importedFilename) ) {
                         if (subFile.isDirectory()) load(subFile);
                         else {
                             List<Document> documents = switch (filename.substring(filename.lastIndexOf('.'))) {
@@ -74,7 +73,8 @@ public class DataLoaderService {
                                 }
                             };
                             if (documents != null) {
-                                imported.put(filename, documents.size());
+                                final String value = String.format("Nb Documents:%d - File size:%d - Date:%s", documents.size(), subFile.length(), new Date());
+                                imported.put(key, value);
                                 log.info("importing {} documents into vector DB file: {}", documents.size(), filename);
                                 this.vectorStore.accept(tokenTextSplitter.apply(documents));
                                 log.info("importation of file: {} done.", filename);

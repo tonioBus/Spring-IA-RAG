@@ -8,13 +8,13 @@ import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.DefaultChatClientBuilder;
 import org.springframework.ai.chat.client.advisor.api.Advisor;
 import org.springframework.ai.chat.client.advisor.vectorstore.QuestionAnswerAdvisor;
-import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.rag.advisor.RetrievalAugmentationAdvisor;
 import org.springframework.ai.rag.preretrieval.query.transformation.RewriteQueryTransformer;
 import org.springframework.ai.rag.retrieval.search.VectorStoreDocumentRetriever;
 import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.stereotype.Service;
+import reactor.core.publisher.Flux;
 
 @Service
 @RequiredArgsConstructor
@@ -75,11 +75,20 @@ public class ChatBotService {
     }*/
 
     public String createPrompt(String question) {
-        String answer = chatClient.prompt()
+        return chatClient.prompt()
                 .advisors(retrievalAugmentationAdvisor)
                 .user(question)
                 .call()
                 .content();
-        return answer;
     }
+
+    public Flux<String> createPromptFlux(String question) {
+        return chatClient.prompt()
+                .user(question)
+                .advisors(retrievalAugmentationAdvisor)
+                .stream()
+                .content();
+    }
+
+
 }

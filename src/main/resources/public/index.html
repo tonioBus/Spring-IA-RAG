@@ -1,53 +1,73 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Hello WebSocket</title>
-    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
-    <link href="/main.css" rel="stylesheet">
-    <script src="https://code.jquery.com/jquery-3.1.1.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@stomp/stompjs@7.0.0/bundles/stomp.umd.min.js"></script>
-    <script src="/app.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dan's Streaming Chatbot</title>
+    <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body>
-<noscript><h2 style="color: #ff0000">Seems your browser doesn't support Javascript! Websocket relies on Javascript being
-    enabled. Please enable
-    Javascript and reload this page!</h2></noscript>
-<div id="main-content" class="container">
-    <div class="row">
-        <div class="col-md-6">
-            <form class="form-inline">
-                <div class="form-group">
-                    <label for="connect">WebSocket connection:</label>
-                    <button id="connect" class="btn btn-default" type="submit">Connect</button>
-                    <button id="disconnect" class="btn btn-default" type="submit" disabled="disabled">Disconnect
-                    </button>
-                </div>
-            </form>
-        </div>
-        <div class="col-md-6">
-            <form class="form-inline">
-                <div class="form-group">
-                    <label for="name">What is your name?</label>
-                    <input type="text" id="name" class="form-control" placeholder="Your name here...">
-                </div>
-                <button id="send" class="btn btn-default" type="submit">Send</button>
-            </form>
-        </div>
-    </div>
-
-    <div class="row">
-        <div class="col-md-12">
-            <table id="conversation" class="table table-striped">
-                <thead>
-                <tr>
-                    <th>Greetings</th>
-                </tr>
-                </thead>
-                <tbody id="greetings1">
-                </tbody>
-            </table>
-        </div>
-    </div>
+<body class="bg-gray-100 h-screen flex flex-col">
+<div class="flex-1 overflow-y-auto p-4">
+    <div id="chat-messages" class="space-y-4"></div>
 </div>
+<div class="p-4 bg-white">
+    <form id="chat-form">
+        <div class="flex space-x-4">
+            <input type="text" id="message-input" class="flex-1 border rounded p-2" placeholder="Type your message...">
+            <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded">Send</button>
+        </div>
+    </form>
+</div>
+<script>
+    const chatMessages = document.getElementById('chat-messages');
+    const chatForm = document.getElementById('chat-form');
+    const messageInput = document.getElementById('message-input');
+
+    chatForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const message = messageInput.value;
+        messageInput.value = '';
+
+        // Add user message to chat
+        chatMessages.innerHTML += `<div class="bg-blue-100 p-2 rounded"><strong>You:</strong> ${message}</div>`;
+
+        // Add AI message container
+        const aiMessageContainer = document.createElement('div');
+        aiMessageContainer.className = 'bg-green-100 p-2 rounded';
+        aiMessageContainer.innerHTML = '<strong>Mr Bean:</strong> ';
+        const aiMessageContent = document.createElement('span');
+        aiMessageContainer.appendChild(aiMessageContent);
+        chatMessages.appendChild(aiMessageContainer);
+
+        try {
+            const response = await fetchStreamWithRetry(`/stream?message=${encodeURIComponent(message)}`);
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+
+            while (true) {
+                const { value, done } = await reader.read();
+                if (done) break;
+                const decodedChunk = decoder.decode(value, { stream: true });
+                aiMessageContent.textContent += decodedChunk;
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            aiMessageContent.textContent += 'Error occurred while fetching the response.';
+        }
+
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    });
+
+    async function fetchStreamWithRetry(url, retries = 3) {
+        for (let i = 0; i < retries; i++) {
+            try {
+                const response = await fetch(url);
+                if (response.ok) return response;
+            } catch (error) {
+                if (i === retries - 1) throw error;
+            }
+        }
+    }
+</script>
 </body>
 </html>

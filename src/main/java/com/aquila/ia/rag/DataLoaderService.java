@@ -8,22 +8,25 @@ import org.springframework.ai.reader.jsoup.JsoupDocumentReader;
 import org.springframework.ai.reader.jsoup.config.JsoupDocumentReaderConfig;
 import org.springframework.ai.reader.pdf.PagePdfDocumentReader;
 import org.springframework.ai.reader.pdf.config.PdfDocumentReaderConfig;
+import org.springframework.ai.reader.tika.TikaDocumentReader;
 import org.springframework.ai.transformer.splitter.TokenTextSplitter;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.stereotype.Service;
 
-import java.io.File;
-import java.util.ArrayList;
+import java.io.*;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
+import java.util.Properties;
 
 @Slf4j
 @RequiredArgsConstructor
 @Service
 public class DataLoaderService {
+
+    private final static String DONE_IMPORT = "import.txt";
 
     @Value("${aquila.rag.location}")
     private String rootPath;
@@ -32,8 +35,21 @@ public class DataLoaderService {
 
     private final TokenTextSplitter tokenTextSplitter = new TokenTextSplitter();
 
+    private final Properties imported = new Properties();
+
     public void load() {
+        final String importedFilename = rootPath + "/" + DONE_IMPORT;
+        try (InputStream in = new FileInputStream(importedFilename)) {
+            imported.load(in);
+        } catch (IOException e) {
+            log.warn("Exception:{} when reading imported properties:{}", e.getLocalizedMessage(), importedFilename);
+        }
         load(new File(rootPath));
+        try (OutputStream out = new FileOutputStream(importedFilename)) {
+            imported.store(out, "IA-RAG imported documents");
+        } catch (IOException e) {
+            log.warn("Exception:{} when writing imported properties:{}", e.getLocalizedMessage(), importedFilename);
+        }
         log.info("load of document done in {}. You can start to send request ...", rootPath);
     }
 
@@ -41,20 +57,25 @@ public class DataLoaderService {
         log.info("load({})", file);
         Arrays.stream(Objects.requireNonNull(file.listFiles())).forEach(
                 subFile -> {
-                    if (subFile.canRead()) {
+                    final String filename = subFile.toString();
+                    if (!imported.contains(filename) && subFile.canRead()) {
                         if (subFile.isDirectory()) load(subFile);
                         else {
-                            final String filename = subFile.toString();
                             List<Document> documents = switch (filename.substring(filename.lastIndexOf('.'))) {
                                 case ".html" -> loadHtml(filename);
                                 case ".pdf" -> loadPdf(filename);
                                 default -> {
-                                    log.warn("file not supported: {}", filename);
-                                    yield null;
+                                    log.warn("file not supported: {} using Tika reader", filename);
+                                    try {
+                                        yield loadTika(filename);
+                                    } catch (Exception e) {
+                                        yield null;
+                                    }
                                 }
                             };
                             if (documents != null) {
-                                log.info("importing into vector DB file: {}", filename);
+                                imported.put(filename, documents.size());
+                                log.info("importing {} documents into vector DB file: {}", documents.size(), filename);
                                 this.vectorStore.accept(tokenTextSplitter.apply(documents));
                                 log.info("importation of file: {} done.", filename);
                             }
@@ -65,7 +86,7 @@ public class DataLoaderService {
     }
 
     private List<Document> loadPdf(String filename) {
-        PagePdfDocumentReader pdfReader = new PagePdfDocumentReader("file://"+filename,
+        PagePdfDocumentReader pdfReader = new PagePdfDocumentReader("file://" + filename,
                 PdfDocumentReaderConfig.builder()
                         .withPageExtractedTextFormatter(ExtractedTextFormatter.builder()
                                 .withNumberOfBottomTextLinesToDelete(3)
@@ -78,7 +99,7 @@ public class DataLoaderService {
     }
 
     /**
-     * @return list of documents
+     * @return list of documents extracted from an HTML
      */
     private List<Document> loadHtml(String filename) {
         JsoupDocumentReaderConfig config = JsoupDocumentReaderConfig.builder()
@@ -91,6 +112,15 @@ public class DataLoaderService {
 
         JsoupDocumentReader reader = new JsoupDocumentReader(filename, config);
         return reader.get();
+    }
+
+    /**
+     * @return list of documents extracted from any Tika supported format:<br/>
+     * <a href="https://tika.apache.org/3.1.0/formats.html">Tika Format</a>
+     */
+    private List<Document> loadTika(String filename) {
+        TikaDocumentReader tikaReader = new TikaDocumentReader("file://" + filename);
+        return tikaReader.get();
     }
 
     @Bean

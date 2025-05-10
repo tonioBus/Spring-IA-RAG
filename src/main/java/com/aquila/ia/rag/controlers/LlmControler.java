@@ -21,18 +21,9 @@ import java.util.Date;
 @RestController
 public class LlmControler {
 
-    public interface StreamingChatModel extends StreamingModel<Prompt, ChatResponse> {
-        // default Flux<String> stream(String message) {
-        // }
-
-        @Override
-        Flux<ChatResponse> stream(Prompt prompt);
-    }
-
     // final private Ollama ollama;
     final private ChatBotService chatBotService;
     final private DataLoaderService dataLoaderService;
-    final private StreamingChatService streamingChatService;
 
     @GetMapping(value = "/llm")
     public String getAnswer(@RequestParam final String prompt) {
@@ -40,28 +31,15 @@ public class LlmControler {
         return chatBotService.createPrompt(prompt);
     }
 
-    @GetMapping("/llmf")
-    public Flux<String> getStreamedResponse(@RequestParam String userInput) {
-        return streamingChatService.streamChatResponse(userInput);
+    @GetMapping("/stream")
+    public Flux<String> getStreamedResponse(@RequestParam String message) {
+        return chatBotService.createPromptFlux(message);
     }
 
 
     @GetMapping(value = "/reload")
     public void reload() {
         dataLoaderService.load();
-    }
-
-
-    @MessageMapping("/hello")
-    @SendTo("/topic/greetings")
-    public String greeting(String message) throws Exception {
-        Thread.sleep(1000); // simulated delay
-        log.info("greeting({})", message);
-        return String.format("""
-                {
-                    "body":"%s"
-                }
-                """, new Date());
     }
 
 }

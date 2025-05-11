@@ -23,12 +23,7 @@ spring:
       base-url: http://localhost:11434
       embedding:
         options:
-          model: deepseek-r1:7b
-      chat:
-        options:
-          model: deepseek-r1:7b
-          temperature: 0.7
-
+          model: mistral-nemo:12b-instruct-2407-q8_0
 management:
   endpoints:
     web:
@@ -40,3 +35,26 @@ hawtio:
 aquila:
   rag:
     location: /RAG/
+
+---
+spring:
+  config:
+    activate:
+      on-profile: gros
+  ai:
+    ollama:
+      chat:
+        options:
+          model: 'mistral-nemo:12b-instruct-2407-q8_0'
+          temperature: 0.7
+---
+spring:
+  config:
+    activate:
+      on-profile: rog
+  ai:
+    ollama:
+      chat:
+        options:
+          model: deepseek-r1:7b
+          temperature: 0.7

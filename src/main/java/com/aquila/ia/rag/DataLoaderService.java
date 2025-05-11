@@ -1,5 +1,6 @@
 package com.aquila.ia.rag;
 
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.document.Document;
@@ -12,7 +13,6 @@ import org.springframework.ai.reader.tika.TikaDocumentReader;
 import org.springframework.ai.transformer.splitter.TokenTextSplitter;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.Bean;
 import org.springframework.stereotype.Service;
 
 import java.io.*;
@@ -23,31 +23,33 @@ import java.util.*;
 @Service
 public class DataLoaderService {
 
-    private final static String DONE_IMPORT = "import.txt";
+    private final static String DONE_IMPORT = "imported-files.xml";
 
     @Value("${aquila.rag.location}")
     private String rootPath;
 
-    private final String importedFilename = rootPath + "/" + DONE_IMPORT;
+    private String importedFilename = null;
 
     private final VectorStore vectorStore;
 
     private final TokenTextSplitter tokenTextSplitter = new TokenTextSplitter();
 
     private final Properties imported = new Properties();
+    private File importedFile = null;
+
+    @PostConstruct
+    void postConstruct() {
+        importedFilename = rootPath + "/" + DONE_IMPORT;
+        importedFile = new File(importedFilename);
+    }
 
     public void load() {
-        try (InputStream in = new FileInputStream(importedFilename)) {
-            imported.load(in);
+        try (InputStream in = new FileInputStream(importedFile)) {
+            imported.loadFromXML(in);
         } catch (IOException e) {
             log.warn("Exception:{} when reading imported properties:{}", e.getLocalizedMessage(), importedFilename);
         }
         load(new File(rootPath));
-        try (OutputStream out = new FileOutputStream(importedFilename)) {
-            imported.store(out, "IA-RAG imported documents");
-        } catch (IOException e) {
-            log.warn("Exception:{} when writing imported properties:{}", e.getLocalizedMessage(), importedFilename);
-        }
         log.info("load of document done in {}. You can start to send request ...", rootPath);
     }
 
@@ -56,41 +58,47 @@ public class DataLoaderService {
         Arrays.stream(Objects.requireNonNull(file.listFiles())).forEach(
                 subFile -> {
                     final String filename = subFile.toString();
-                    final String key = filename.replace('\\', '.');
-                    if (!imported.containsKey(key) && subFile.canRead() && !filename.equals(importedFilename) ) {
-                        if (subFile.isDirectory()) load(subFile);
-                        else {
-                            List<Document> documents = switch (filename.substring(filename.lastIndexOf('.'))) {
-                                case ".html" -> loadHtml(filename);
-                                case ".pdf" -> loadPdf(filename);
-                                default -> {
-                                    log.warn("file not supported: {} using Tika reader", filename);
-                                    try {
-                                        yield loadTika(filename);
-                                    } catch (Exception e) {
-                                        yield null;
-                                    }
-                                }
-                            };
-                            if (documents != null) {
-                                final String value = String.format("Nb Documents:%d - File size:%d - Date:%s", documents.size(), subFile.length(), new Date());
-                                imported.put(key, value);
-                                log.info("importing {} documents into vector DB file: {}", documents.size(), filename);
-                                this.vectorStore.accept(tokenTextSplitter.apply(documents));
-                                log.info("importation of file: {} done.", filename);
-                            }
-                        }
-                    } else log.error("Can not read file/dir:{}", subFile);
+                    load(subFile, filename);
                 }
         );
+    }
+
+    private void load(File subFile, String filename) {
+        final String key = filename; // .replace('\\', '_');
+        if (!imported.containsKey(key) && subFile.canRead() && !filename.equals(importedFile.toString())) {
+            if (subFile.isDirectory()) load(subFile);
+            else {
+                try {
+                    List<Document> documents = switch (filename.substring(filename.lastIndexOf('.'))) {
+                        case ".html" -> loadHtml(filename);
+                        case ".pdf" -> loadPdf(filename);
+                        case ".jar" -> null;
+                        default -> {
+                            log.warn("using Tika reader for file:{}", filename);
+                            yield loadTika(filename);
+                        }
+                    };
+                    if (documents != null) {
+                        final String value = String.format("Nb Documents:%d - File size:%d - Date:%s", documents.size(), subFile.length(), new Date());
+                        imported.put(key, value);
+                        saveImportedList();
+                        log.info("importing {} documents into vector DB file: {}", documents.size(), filename);
+                        this.vectorStore.accept(tokenTextSplitter.apply(documents));
+                        log.info("importation of file: {} done.", filename);
+                    }
+                } catch (Throwable t) {
+                    log.error(String.format("Can not process file:%s, skipped", filename), t);
+                }
+            }
+        } else log.error("skipping file/dir:{}", subFile);
     }
 
     private List<Document> loadPdf(String filename) {
         PagePdfDocumentReader pdfReader = new PagePdfDocumentReader("file://" + filename,
                 PdfDocumentReaderConfig.builder()
                         .withPageExtractedTextFormatter(ExtractedTextFormatter.builder()
-                                .withNumberOfBottomTextLinesToDelete(3)
-                                .withNumberOfTopPagesToSkipBeforeDelete(1)
+                                .withNumberOfBottomTextLinesToDelete(0)
+                                .withNumberOfTopPagesToSkipBeforeDelete(0)
                                 .build())
                         .withPagesPerDocument(1)
                         .build());
@@ -111,7 +119,7 @@ public class DataLoaderService {
                 .build();
 
         JsoupDocumentReader reader = new JsoupDocumentReader(filename, config);
-        return reader.get();
+        return tokenTextSplitter.apply(reader.get());
     }
 
     /**
@@ -120,11 +128,15 @@ public class DataLoaderService {
      */
     private List<Document> loadTika(String filename) {
         TikaDocumentReader tikaReader = new TikaDocumentReader("file://" + filename);
-        return tikaReader.get();
+        return tokenTextSplitter.apply(tikaReader.get());
     }
 
-    @Bean
-    public VectorStore getVector() {
-        return vectorStore;
+    private void saveImportedList() {
+        try (OutputStream out = new FileOutputStream(importedFilename)) {
+            imported.storeToXML(out, "IA-RAG imported documents");
+            out.flush();
+        } catch (IOException e) {
+            log.warn("Exception:{} when writing imported properties:{}", e.getLocalizedMessage(), importedFilename);
+        }
     }
 }

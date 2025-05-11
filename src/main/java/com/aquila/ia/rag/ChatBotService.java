@@ -34,7 +34,10 @@ public class ChatBotService {
     void postConstruct() {
         chatClient = ChatClient.builder(ollama.getChatModel())
                 .defaultAdvisors(QuestionAnswerAdvisor.builder(vectorStore)
-                        .searchRequest(SearchRequest.builder().build())
+                        .searchRequest(SearchRequest.builder()
+                                .similarityThreshold(0.8d)
+                                .topK(6)
+                                .build())
                         .build())
                 .build();
         chatClientBuilder = new DefaultChatClientBuilder(ollama.getChatModel(), ObservationRegistry.NOOP, null);
@@ -43,36 +46,12 @@ public class ChatBotService {
                         .chatClientBuilder(chatClientBuilder.build().mutate())
                         .build())
                 .documentRetriever(VectorStoreDocumentRetriever.builder()
-                        .similarityThreshold(0.50)
+                       // .similarityThreshold(0.73)
+                       // .topK(5)
                         .vectorStore(vectorStore)
                         .build())
                 .build();
     }
-
-    // @Autowired
-    // private DataRetrievalService dataRetrievalService;
-
-    private final String PROMPT_BLUEPRINT = """
-              Answer the query strictly referring the provided context:
-              {context}
-              Query:
-              {query}
-              In case you don't have any answer from the context provided, just say:
-              I'm sorry I don't have the information you are looking for.
-            """;
-
-
-//    public String chat(String query) {
-//        return chatClient.call(createPrompt(query, null)); //dataRetrievalService.searchData(query)));
-//    }
-
-    /*
-    private String createPrompt1(String query, List<Document> context) {
-        PromptTemplate promptTemplate = new PromptTemplate(PROMPT_BLUEPRINT);
-        promptTemplate.add("query", query);
-        // promptTemplate.add("context", context);
-        return promptTemplate.render();
-    }*/
 
     public String createPrompt(String question) {
         return chatClient.prompt()

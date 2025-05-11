@@ -9,7 +9,6 @@ spring:
     enabled: true
   datasource:
     url: jdbc:mariadb://localhost:3306/rag
-    port: 3306
     username: root
     password: 49454945
   ai:
@@ -19,11 +18,11 @@ spring:
         distance-type: COSINE
     ollama:
       init:
-        pull-model-strategy=always: true
+        pull-model-strategy: WHEN_MISSING
       base-url: http://localhost:11434
       embedding:
         options:
-          model: mistral-nemo:12b-instruct-2407-q8_0
+          model: phi4-reasoning:plus
 management:
   endpoints:
     web:
@@ -45,7 +44,7 @@ spring:
     ollama:
       chat:
         options:
-          model: 'mistral-nemo:12b-instruct-2407-q8_0'
+          model: phi4-reasoning:plus
           temperature: 0.7
 ---
 spring:

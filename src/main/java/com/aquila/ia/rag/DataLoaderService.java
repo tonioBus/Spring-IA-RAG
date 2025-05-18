@@ -103,7 +103,7 @@ public class DataLoaderService {
                         .withPagesPerDocument(1)
                         .build());
 
-        return tokenTextSplitter.apply(pdfReader.get());
+        return pdfReader.get();
     }
 
     /**
@@ -119,7 +119,7 @@ public class DataLoaderService {
                 .build();
 
         JsoupDocumentReader reader = new JsoupDocumentReader(filename, config);
-        return tokenTextSplitter.apply(reader.get());
+        return reader.get();
     }
 
     /**
@@ -128,7 +128,8 @@ public class DataLoaderService {
      */
     private List<Document> loadTika(String filename) {
         TikaDocumentReader tikaReader = new TikaDocumentReader("file://" + filename);
-        return tokenTextSplitter.apply(tikaReader.get());
+        List<Document> docs = tikaReader.get();
+        return docs;
     }
 
     private void saveImportedList() {

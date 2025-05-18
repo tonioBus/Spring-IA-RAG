@@ -7,11 +7,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.DefaultChatClientBuilder;
 import org.springframework.ai.chat.client.advisor.api.Advisor;
-import org.springframework.ai.chat.client.advisor.vectorstore.QuestionAnswerAdvisor;
 import org.springframework.ai.rag.advisor.RetrievalAugmentationAdvisor;
 import org.springframework.ai.rag.preretrieval.query.transformation.RewriteQueryTransformer;
 import org.springframework.ai.rag.retrieval.search.VectorStoreDocumentRetriever;
-import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
@@ -32,30 +30,31 @@ public class ChatBotService {
 
     @PostConstruct
     void postConstruct() {
-        chatClient = ChatClient.builder(ollama.getChatModel())
-                .defaultAdvisors(QuestionAnswerAdvisor.builder(vectorStore)
-                        .searchRequest(SearchRequest.builder()
-                                .similarityThreshold(0.8d)
-                                .topK(6)
-                                .build())
-                        .build())
-                .build();
         chatClientBuilder = new DefaultChatClientBuilder(ollama.getChatModel(), ObservationRegistry.NOOP, null);
         retrievalAugmentationAdvisor = RetrievalAugmentationAdvisor.builder()
                 .queryTransformers(RewriteQueryTransformer.builder()
                         .chatClientBuilder(chatClientBuilder.build().mutate())
                         .build())
                 .documentRetriever(VectorStoreDocumentRetriever.builder()
-                       // .similarityThreshold(0.73)
-                       // .topK(5)
+                        // .similarityThreshold(0.73)
+                        // .topK(5)
                         .vectorStore(vectorStore)
                         .build())
                 .build();
+        chatClient = ChatClient.builder(ollama.getChatModel())
+                .defaultAdvisors(retrievalAugmentationAdvisor)
+//                        .searchRequest(SearchRequest.builder()
+//                                .similarityThreshold(0.8d)
+//                                .topK(6)
+//                                .build())
+//                        .build())
+                .build();
     }
 
+    @Deprecated
     public String createPrompt(String question) {
         return chatClient.prompt()
-                .advisors(retrievalAugmentationAdvisor)
+                // .advisors(retrievalAugmentationAdvisor)
                 .user(question)
                 .call()
                 .content();
@@ -64,7 +63,7 @@ public class ChatBotService {
     public Flux<String> createPromptFlux(String question) {
         return chatClient.prompt()
                 .user(question)
-                .advisors(retrievalAugmentationAdvisor)
+                // .advisors(retrievalAugmentationAdvisor)
                 .stream()
                 .content();
     }

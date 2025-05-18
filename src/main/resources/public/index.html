@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dan's Streaming Chatbot</title>
+    <title>Tonio's Streaming Chatbot</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         .button-class {
@@ -52,7 +52,7 @@
         const aiMessageContainer = document.createElement('div');
         aiMessageContainer.className = 'bg-green-100 p-2 rounded';
         aiMessageContainer.innerHTML = '<strong>Mr Bean:</strong> ';
-        const aiMessageContent = document.createElement('span');
+        aiMessageContent = document.createElement('span');
         aiMessageContainer.appendChild(aiMessageContent);
         chatMessages.appendChild(aiMessageContainer);
 
@@ -65,7 +65,14 @@
                 const { value, done } = await reader.read();
                 if (done) break;
                 const decodedChunk = decoder.decode(value, { stream: true });
+                console.log(decodedChunk);
                 aiMessageContent.textContent += decodedChunk;
+                if(decodedChunk === ".") {
+                    console.log("YESSSSSSS");
+                    aiMessageContent = document.createElement('span');
+                    aiMessageContainer.appendChild(document.createElement('br'));
+                    aiMessageContainer.appendChild(aiMessageContent);
+                }
             }
         } catch (error) {
             console.error('Error:', error);

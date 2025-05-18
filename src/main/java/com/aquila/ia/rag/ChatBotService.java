@@ -3,6 +3,7 @@ package com.aquila.ia.rag;
 import com.aquila.ia.rag.llm.Ollama;
 import io.micrometer.observation.ObservationRegistry;
 import jakarta.annotation.PostConstruct;
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.DefaultChatClientBuilder;
@@ -22,8 +23,10 @@ public class ChatBotService {
 
     private final VectorStore vectorStore;
 
+    @Getter
     private ChatClient chatClient;
 
+    @Getter
     private Advisor retrievalAugmentationAdvisor;
 
     private DefaultChatClientBuilder chatClientBuilder;
@@ -65,8 +68,8 @@ public class ChatBotService {
                 .user(question)
                 // .advisors(retrievalAugmentationAdvisor)
                 .stream()
-                .content();
+                .content().
+                transformDeferred(flux -> flux.map(sz -> sz.replace("\n", "\r\n")));
     }
-
 
 }

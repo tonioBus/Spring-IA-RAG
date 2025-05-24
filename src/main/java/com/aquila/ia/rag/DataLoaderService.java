@@ -40,10 +40,10 @@ public class DataLoaderService {
     @PostConstruct
     void postConstruct() {
         importedFilename = rootPath + "/" + DONE_IMPORT;
-        importedFile = new File(importedFilename);
     }
 
     public void load() {
+        importedFile = new File(importedFilename);
         try (InputStream in = new FileInputStream(importedFile)) {
             imported.loadFromXML(in);
         } catch (IOException e) {

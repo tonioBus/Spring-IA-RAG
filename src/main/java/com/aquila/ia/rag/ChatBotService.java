@@ -66,7 +66,7 @@ public class ChatBotService {
     public Flux<String> createPromptFlux(String question) {
         return chatClient.prompt()
                 .user(question)
-                // .advisors(retrievalAugmentationAdvisor)
+                .advisors(retrievalAugmentationAdvisor)
                 .stream()
                 .content().
                 transformDeferred(flux -> flux.map(sz -> sz.replace("\n", "\r\n")));

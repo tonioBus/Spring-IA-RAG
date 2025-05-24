@@ -14,7 +14,7 @@ spring:
   ai:
     vectorstore:
       mariadb:
-        initialize-schema: false
+        initialize-schema: true
         distance-type: COSINE
     ollama:
       init:
@@ -22,7 +22,9 @@ spring:
       base-url: http://localhost:11434
       embedding:
         options:
-          model: deepseek-r1
+          model: deepseek-r1:7b
+          temperature: 0.4
+
 management:
   endpoints:
     web:

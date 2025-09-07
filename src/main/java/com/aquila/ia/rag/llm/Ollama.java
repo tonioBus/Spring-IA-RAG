@@ -12,10 +12,10 @@ import org.springframework.stereotype.Component;
 @Component
 public class Ollama {
 
-    // @Value("${spring.ia.ollama.chat.options.model}")
+    @Value("${spring.ia.ollama.chat.options.model ?: deepseek-r1:7b}")
     private String modelName = "deepseek-r1:7b";
 
-    // @Value("${spring.ia.ollama.chat.options.temperature}")
+    @Value("${spring.ia.ollama.chat.options.temperature ?: 0.7}")
     private double temperature = 0.7;
 
     private final OllamaChatModel chatModel;

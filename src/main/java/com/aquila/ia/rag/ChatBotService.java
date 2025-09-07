@@ -72,7 +72,7 @@ public class ChatBotService {
                 .format(outputConverter.getJsonSchemaMap())
                 .build();
         chatClient = ChatClient.builder(ollamaChatModel)
-                .defaultAdvisors(retrievalAugmentationAdvisor)
+                // .defaultAdvisors(retrievalAugmentationAdvisor)
 //                        .searchRequest(SearchRequest.builder()
 //                                .similarityThreshold(0.8d)
 //                                .topK(6)

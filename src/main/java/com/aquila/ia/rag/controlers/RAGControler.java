@@ -19,12 +19,6 @@ public class RAGControler {
     final private ChatBotService chatBotService;
     final private DataLoaderService dataLoaderService;
 
-    @GetMapping(value = "/llm")
-    public String getAnswer(@RequestParam final String prompt) {
-        log.info("getAnswer({})", prompt);
-        return chatBotService.createPrompt(prompt);
-    }
-
     @GetMapping("/stream")
     @Async
     public Flux<String> getStreamedResponse(@RequestParam String message) {

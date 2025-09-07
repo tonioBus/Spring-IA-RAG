@@ -64,7 +64,7 @@ public class DataLoaderService {
     }
 
     private void load(File subFile, String filename) {
-        final String key = filename; // .replace('\\', '_');
+        final String key = filename;
         if (!imported.containsKey(key) && subFile.canRead() && !filename.equals(importedFile.toString())) {
             if (subFile.isDirectory()) load(subFile);
             else {
